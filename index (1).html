@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Betesda Campus — Escuela de Discipulado</title>
+<style>
+:root{--navy:#063a70;--blue:#087acb;--gold:#d7a43b;--ink:#12304f;--muted:#5d6b7a;--bg:#f2f7fb;--line:#dce7f1;--bad:#b3261e}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+button,input,select{font:inherit}a{color:var(--blue)}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.btn{background:var(--blue);color:#fff;border:0;border-radius:8px;padding:10px 16px;font-weight:600;cursor:pointer}
+.btn.alt{background:#fff;color:var(--navy);border:1px solid var(--line)}.btn.sm{padding:6px 10px;font-size:14px}.btn.del{background:#fff;color:var(--bad);border:1px solid var(--line)}
+input,select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fff;margin:4px 0 12px}
+label{font-size:14px;font-weight:600}
+.auth{min-height:100vh;display:grid;place-items:center;padding:20px;background:linear-gradient(135deg,#eaf4fb,#fff7e6)}
+.box{width:min(440px,100%);background:#fff;border-radius:14px;padding:28px;box-shadow:0 8px 30px rgba(6,58,112,.12)}
+.box img{display:block;height:72px;margin:0 auto 12px}.box h1{font-size:22px;text-align:center;margin:0 0 4px;color:var(--navy)}
+.box p.sub{text-align:center;color:var(--muted);margin:0 0 18px}
+.tabs{display:flex;gap:8px;margin-bottom:16px}.tabs button{flex:1}
+.msg{padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:14px}.msg.err{background:#fdecea;color:var(--bad)}.msg.ok{background:#e7f6ec;color:#17613a}
+.shell{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+aside{background:var(--navy);color:#fff;padding:20px 14px;display:flex;flex-direction:column;gap:6px}
+aside .brand{display:flex;align-items:center;gap:10px;font-weight:700;margin-bottom:14px}aside .brand img{height:38px}
+aside button.nav{background:none;border:0;color:#cfe3f5;text-align:left;padding:10px 12px;border-radius:8px;cursor:pointer}
+aside button.nav[aria-current=page]{background:rgba(255,255,255,.14);color:#fff;font-weight:600}
+aside .who{margin-top:auto;font-size:14px;color:#cfe3f5}
+main{padding:28px 5vw;max-width:980px;width:100%}
+h2{margin:0 0 4px;color:var(--navy)}.lead{color:var(--muted);margin:0 0 20px}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px}
+.row{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+.tag{display:inline-block;background:#fff4d9;color:#7a5600;border-radius:99px;padding:2px 10px;font-size:13px}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0 12px;align-items:end}
+.empty{color:var(--muted);padding:20px;text-align:center}
+@media(max-width:760px){.shell{grid-template-columns:1fr}aside{flex-direction:row;flex-wrap:wrap;align-items:center}aside .who{margin:0 0 0 auto}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+.hero{background:linear-gradient(120deg,var(--navy),var(--blue));color:#fff;border-radius:16px;padding:28px;margin-bottom:22px;position:relative;overflow:hidden}
+.hero h2{color:#fff;font-size:26px}.hero p{margin:6px 0 0;opacity:.9}.hero:after{content:"";position:absolute;right:-40px;top:-40px;width:180px;height:180px;border-radius:50%;background:rgba(215,164,59,.4)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+.cc{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(6,58,112,.08);display:flex;flex-direction:column}
+.cc .top{height:84px;display:grid;place-items:center;color:#fff;font-size:32px;font-weight:700}
+.cc .bd{padding:14px;display:flex;flex-direction:column;gap:10px;flex:1}
+.week{font-weight:700;color:var(--navy);margin:22px 0 8px;padding-left:10px;border-left:4px solid var(--gold)}
+.vid{aspect-ratio:16/9;width:100%;border:0;border-radius:10px;background:#000;margin-top:10px}
+.card{box-shadow:0 2px 10px rgba(6,58,112,.05)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// 1) Pega aquí los datos de tu proyecto (Supabase > Project Settings > API).
+//    La clave "anon / publishable" es pública por diseño; la seguridad la dan las reglas RLS del archivo SQL.
+//    NUNCA pegues aquí la clave "service_role".
+const SUPABASE_URL = 'https://zxnublubswodfwcjlooi.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_FS-WYd90qhsBHcQDgCsksg_8oU8_E8n';
+
+const app = document.getElementById('app');
+const ROLES = {student:'Estudiante', teacher:'Profesor', admin:'Administrador'};
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const staff = () => me && (me.role === 'teacher' || me.role === 'admin');
+const safeUrl = u => /^https:\/\//i.test(u || '') ? u : '';
+let sb, me = null, view = 'home', curCourse = null;
+const COLORS = ['#063a70','#087acb','#b8860b','#2e7d6b','#7a4fa3','#c2563a'];
+
+if (SUPABASE_URL.startsWith('PEGA')) {
+  app.innerHTML = '<div class="auth"><div class="box"><h1>Falta configurar</h1><p class="sub">Abre index.html y pega tu Project URL y tu anon key de Supabase.</p></div></div>';
+} else {
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  sb.auth.onAuthStateChange((_e, session) => { setTimeout(() => boot(session), 0); });
+}
+
+async function boot(session) {
+  if (!session) { me = null; return renderAuth('login'); }
+  const { data } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
+  me = data || { id: session.user.id, name: session.user.email, role: 'student' };
+  go(view);
+}
+
+function renderAuth(mode, msg, ok) {
+  const reg = mode === 'register';
+  app.innerHTML = `<div class="auth"><div class="box">
+    <img src="logo.jpg" alt="Betesda Campus"><h1>Betesda Campus</h1><p class="sub">Escuela de Discipulado</p>
+    <div class="tabs"><button class="btn ${reg ? 'alt' : ''}" data-m="login">Entrar</button><button class="btn ${reg ? '' : 'alt'}" data-m="register">Crear cuenta</button></div>
+    ${msg ? `<div class="msg ${ok ? 'ok' : 'err'}" role="alert">${esc(msg)}</div>` : ''}
+    <form id="f">
+      ${reg ? '<label for="name">Nombre completo</label><input id="name" required maxlength="80" autocomplete="name">' : ''}
+      <label for="email">Correo</label><input id="email" type="email" required autocomplete="email">
+      <label for="pass">Contraseña${reg ? ' (mínimo 8 caracteres)' : ''}</label><input id="pass" type="password" required minlength="${reg ? 8 : 1}" autocomplete="${reg ? 'new-password' : 'current-password'}">
+      <button class="btn" style="width:100%">${reg ? 'Crear cuenta' : 'Entrar'}</button>
+    </form>${reg ? '' : '<p class="sub" style="margin-top:14px"><a href="#" id="forgot">Olvidé mi contraseña</a></p>'}</div></div>`;
+  app.querySelectorAll('[data-m]').forEach(b => b.onclick = () => renderAuth(b.dataset.m));
+  const fg = document.getElementById('forgot');
+  if (fg) fg.onclick = async e => {
+    e.preventDefault(); const em = document.getElementById('email').value.trim();
+    if (!em) return renderAuth('login', 'Escribe tu correo y vuelve a pulsar el enlace.');
+    await sb.auth.resetPasswordForEmail(em, { redirectTo: location.href.split('#')[0] });
+    renderAuth('login', 'Si el correo existe, te enviamos un enlace para cambiar la contraseña.', true);
+  };
+  document.getElementById('f').onsubmit = async e => {
+    e.preventDefault();
+    const email = document.getElementById('email').value.trim(), password = document.getElementById('pass').value;
+    if (reg) {
+      const name = document.getElementById('name').value.trim();
+      const { data, error } = await sb.auth.signUp({ email, password, options: { data: { name } } });
+      if (error) return renderAuth('register', 'No se pudo crear la cuenta: ' + error.message);
+      if (!data.session) renderAuth('login', 'Cuenta creada. Revisa tu correo para confirmarla y luego entra.', true);
+    } else {
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) renderAuth('login', 'Correo o contraseña incorrectos.');
+    }
+  };
+}
+
+const NAV = () => [['home','🏠 Inicio'],['courses','📚 Materias'],['tasks','📝 Tareas'],['news','📣 Anuncios'], ...(staff() ? [['users', me.role === 'admin' ? '👥 Usuarios' : '👥 Estudiantes']] : [])];
+
+function shell(html) {
+  app.innerHTML = `<div class="shell"><aside>
+    <div class="brand"><img src="logo.jpg" alt=""><span>Betesda Campus</span></div>
+    <nav style="display:contents">${NAV().map(([k, t]) => `<button class="nav" data-v="${k}" ${(k === view || (k === 'courses' && view === 'lessons')) ? 'aria-current="page"' : ''}>${t}</button>`).join('')}</nav>
+    <div class="who">${esc(me.name)}<br><span class="tag">${ROLES[me.role]}</span><br><button class="btn alt sm" id="out" style="margin-top:8px">Salir</button></div>
+  </aside><main>${html}</main></div>`;
+  app.querySelectorAll('[data-v]').forEach(b => b.onclick = () => go(b.dataset.v));
+  document.getElementById('out').onclick = () => sb.auth.signOut();
+}
+
+async function go(v) {
+  view = v;
+  const fn = { home, courses, tasks, news, users, lessons }[v] || home;
+  try { await fn(); } catch (e) { shell(`<div class="msg err">Ocurrió un error: ${esc(e.message)}</div>`); }
+}
+const check = r => { if (r.error) throw r.error; return r.data; };
+
+async function home() {
+  const [c, t, n] = await Promise.all([sb.from('courses').select('id', { count: 'exact', head: true }), sb.from('tasks').select('id', { count: 'exact', head: true }), sb.from('announcements').select('*').order('created_at', { ascending: false }).limit(3)]);
+  const news = check(n);
+  shell(`<div class="hero"><h2>Bienvenido, ${esc(me.name)}</h2><p>${me.role === 'student' ? 'Que Dios continúe guiando tu proceso de formación.' : 'Panel de ' + ROLES[me.role].toLowerCase() + '.'}</p></div>
+    <div class="form"><div class="card"><b>${c.count ?? 0}</b><br>Materias</div><div class="card"><b>${t.count ?? 0}</b><br>Tareas</div></div>
+    <h3>Últimos anuncios</h3>${news.length ? news.map(a => `<div class="card"><b>${esc(a.title)}</b><br>${esc(a.body)}</div>`).join('') : '<div class="empty">Aún no hay anuncios.</div>'}`);
+}
+
+async function courses() {
+  const list = check(await sb.from('courses').select('*').order('created_at'));
+  shell(`<h2>Materias</h2><p class="lead">Tus cursos y enlaces a clases virtuales.</p>
+    ${staff() ? `<form class="card form" id="add"><div><label>Materia</label><input name="title" required maxlength="100"></div><div><label>Profesor</label><input name="teacher_name" maxlength="80"></div><div><label>Enlace de clase (https)</label><input name="meet_url" type="url" placeholder="https://meet.google.com/..."></div><div><button class="btn">Agregar materia</button></div></form>` : ''}
+    <div class="grid">${list.length ? list.map((c, i) => `<div class="cc"><div class="top" style="background:${COLORS[i % COLORS.length]}">${esc((c.title || '?').trim().charAt(0).toUpperCase())}</div><div class="bd"><b>${esc(c.title)}</b><small>${c.teacher_name ? 'Profesor: ' + esc(c.teacher_name) : ''}</small><button class="btn sm" data-les="${c.id}" data-t="${esc(c.title)}">Ver lecciones</button>${safeUrl(c.meet_url) ? `<a class="btn alt sm" style="text-align:center;text-decoration:none" href="${esc(safeUrl(c.meet_url))}" target="_blank" rel="noopener noreferrer">Entrar a la clase en vivo</a>` : ''}${staff() ? `<button class="btn del sm" data-del="${c.id}">Eliminar</button>` : ''}</div></div>`).join('') : '<div class="empty">No hay materias todavía.</div>'}</div>`);
+  document.querySelectorAll('[data-les]').forEach(b => b.onclick = () => { curCourse = { id: Number(b.dataset.les), title: b.dataset.t }; go('lessons'); });
+  wire('courses');
+}
+
+const ytEmbed = u => { try { const x = new URL(u); let id = ''; if (x.hostname === 'youtu.be') id = x.pathname.slice(1); else if (/youtube\.com$/.test(x.hostname)) id = x.searchParams.get('v') || x.pathname.split('/').pop(); return /^[\w-]{11}$/.test(id) ? 'https://www.youtube-nocookie.com/embed/' + id : ''; } catch { return ''; } };
+
+async function lessons() {
+  if (!curCourse) return go('courses');
+  const list = check(await sb.from('lessons').select('*').eq('course_id', curCourse.id).order('week').order('id'));
+  const weeks = [...new Set(list.map(l => l.week))];
+  const one = l => { const e = ytEmbed(l.video_url); return `<div class="card"><div class="row"><b>${esc(l.title)}</b>${staff() ? `<button class="btn del sm" data-del="${l.id}">Eliminar</button>` : ''}</div>${l.notes ? `<p>${esc(l.notes)}</p>` : ''}${e ? `<iframe class="vid" src="${esc(e)}" title="${esc(l.title)}" allowfullscreen loading="lazy"></iframe>` : (safeUrl(l.video_url) ? `<p><a href="${esc(safeUrl(l.video_url))}" target="_blank" rel="noopener noreferrer">▶ Ver video</a></p>` : '')}${safeUrl(l.material_url) ? `<p><a class="btn alt sm" style="text-decoration:none" href="${esc(safeUrl(l.material_url))}" target="_blank" rel="noopener noreferrer">📎 Material de estudio</a></p>` : ''}</div>`; };
+  shell(`<button class="btn alt sm" id="back">← Materias</button><h2 style="margin-top:12px">${esc(curCourse.title)}</h2><p class="lead">Lecciones y materiales por semana.</p>
+    ${staff() ? `<form class="card form" id="add"><div><label>Semana</label><input name="week" type="number" min="1" max="60" value="1" required></div><div><label>Título</label><input name="title" required maxlength="140"></div><div><label>Video (YouTube u otro https)</label><input name="video_url" type="url"></div><div><label>Material (https: PDF, Drive…)</label><input name="material_url" type="url"></div><div><label>Notas</label><input name="notes" maxlength="1000"></div><div><button class="btn">Agregar lección</button></div></form>` : ''}
+    ${weeks.length ? weeks.map(w => `<div class="week">Semana ${w}</div>` + list.filter(l => l.week === w).map(one).join('')).join('') : '<div class="empty">Aún no hay lecciones en esta materia.</div>'}`);
+  document.getElementById('back').onclick = () => go('courses');
+  wire('lessons');
+}
+
+async function tasks() {
+  const cs = check(await sb.from('courses').select('id,title').order('title'));
+  const list = check(await sb.from('tasks').select('*').order('due_date', { nullsFirst: false }));
+  const name = id => (cs.find(c => c.id === id) || {}).title || '';
+  shell(`<h2>Tareas</h2><p class="lead">Entregas y fechas importantes.</p>
+    ${staff() ? `<form class="card form" id="add"><div><label>Materia</label><select name="course_id" required>${cs.map(c => `<option value="${c.id}">${esc(c.title)}</option>`).join('')}</select></div><div><label>Tarea</label><input name="title" required maxlength="140"></div><div><label>Fecha límite</label><input name="due_date" type="date"></div><div><button class="btn">Asignar tarea</button></div></form>` : ''}
+    ${list.length ? list.map(t => `<div class="card row"><div><b>${esc(t.title)}</b><br><small>${esc(name(t.course_id))}${t.due_date ? ' · entrega ' + esc(t.due_date) : ''}</small></div>${staff() ? `<button class="btn del sm" data-del="${t.id}">Eliminar</button>` : ''}</div>`).join('') : '<div class="empty">No hay tareas pendientes.</div>'}`);
+  wire('tasks');
+}
+
+async function news() {
+  const list = check(await sb.from('announcements').select('*').order('created_at', { ascending: false }));
+  shell(`<h2>Anuncios</h2><p class="lead">Comunicación general de la escuela.</p>
+    ${staff() ? `<form class="card" id="add"><label>Título</label><input name="title" required maxlength="120"><label>Mensaje</label><input name="body" maxlength="1000"><button class="btn">Publicar anuncio</button></form>` : ''}
+    ${list.length ? list.map(a => `<div class="card row"><div><b>${esc(a.title)}</b><br>${esc(a.body)}<br><small>${esc(a.author_name)} · ${new Date(a.created_at).toLocaleDateString('es-DO')}</small></div>${staff() ? `<button class="btn del sm" data-del="${a.id}">Eliminar</button>` : ''}</div>`).join('') : '<div class="empty">Aún no hay anuncios.</div>'}`);
+  wire('announcements');
+}
+
+async function users() {
+  const list = check(await sb.from('profiles').select('*').order('created_at'));
+  const admin = me.role === 'admin';
+  shell(`<h2>${admin ? 'Usuarios' : 'Estudiantes'}</h2><p class="lead">${admin ? 'Asigna roles. Los cambios los valida el servidor.' : 'Personas registradas en la escuela.'}</p>
+    ${list.map(u => `<div class="card row"><div><b>${esc(u.name || '(sin nombre)')}</b><br><small>${esc(u.email)}</small></div>${admin ? `<select data-role="${u.id}" style="width:auto;margin:0" ${u.id === me.id ? 'disabled' : ''}>${Object.entries(ROLES).map(([k, v]) => `<option value="${k}" ${u.role === k ? 'selected' : ''}>${v}</option>`).join('')}</select>` : `<span class="tag">${ROLES[u.role]}</span>`}</div>`).join('')}`);
+  document.querySelectorAll('[data-role]').forEach(s => s.onchange = async () => {
+    const { error } = await sb.from('profiles').update({ role: s.value }).eq('id', s.dataset.role);
+    if (error) alert('No se pudo cambiar el rol: ' + error.message);
+  });
+}
+
+function wire(table) {
+  const f = document.getElementById('add');
+  if (f) f.onsubmit = async e => {
+    e.preventDefault();
+    const row = Object.fromEntries([...new FormData(f)].filter(([, v]) => v !== ''));
+    if (table === 'announcements') row.author_name = me.name;
+    if (table === 'tasks') row.course_id = Number(row.course_id);
+    if (['meet_url', 'video_url', 'material_url'].some(k => row[k] && !safeUrl(row[k]))) return alert('Los enlaces deben empezar con https://');
+    if (table === 'lessons') { row.course_id = curCourse.id; row.week = Number(row.week); }
+    const { error } = await sb.from(table).insert(row);
+    if (error) return alert('No se pudo guardar: ' + error.message);
+    go(view);
+  };
+  document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+    if (!confirm('¿Eliminar este elemento?')) return;
+    const { error } = await sb.from(table).delete().eq('id', b.dataset.del);
+    if (error) return alert('No se pudo eliminar: ' + error.message);
+    go(view);
+  });
+}
+</script>
+</body>
+</html>
